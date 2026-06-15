@@ -1,0 +1,16 @@
+{
+  "name": "nursing-app",
+  "version": "1.0.0",
+  "description": "Hospital nursing management system",
+  "private": true,
+  "scripts": {
+    "dev": "cd frontend && npm run dev",
+    "build": "cd frontend && npm run build",
+    "preview": "cd frontend && npm run preview"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "devDependencies": {}
+}
