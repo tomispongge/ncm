@@ -5,11 +5,11 @@ const modules = [
     path: '/rotativa',
     icon: '👤',
     label: 'Mi Rotativa',
-    description: 'Pacientes asignados a tu turno',
+    description: 'Organiza tus turnos',
     color: 'bg-blue-50 border-blue-200 hover:bg-blue-100',
     iconBg: 'bg-blue-100',
     stat: null,
-    statLabel: 'Ver pacientes →',
+    statLabel: 'Ver calendario →',
   },
   {
     path: '/sala',
