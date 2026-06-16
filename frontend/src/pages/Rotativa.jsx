@@ -373,7 +373,8 @@ export default function Rotativa() {
           className="fixed inset-0 bg-black/40 z-50 flex items-end md:items-center justify-center"
           onClick={e => { if (e.target === e.currentTarget) { setSelectedDay(null); reset() } }}
         >
-          <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl p-5 max-h-[85vh] overflow-y-auto">
+          <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-2xl p-5 overflow-y-auto"
+  style={{ maxHeight: '90vh', minHeight: '60vh' }}>
 
             {/* Cabecera */}
             <div className="flex justify-between items-start mb-4">
