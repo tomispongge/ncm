@@ -26,7 +26,7 @@ export default function Layout({ children, user }) {
               onClick={() => supabase.auth.signOut()}
               className="text-sm bg-indigo-600 hover:bg-indigo-500 px-3 py-1 rounded-lg transition"
             >
-              Salir
+              Cerrar sesión
             </button>
           </div>
         </div>
