@@ -5,7 +5,7 @@ import BedCard from './BedCard';
 import BedInfoCard from './BedInfoCard';
 import BedFichaScreen from './BedFichaScreen';
 import AddBedDialog from './AddBedDialog';
-import { getSheet } from '../../lib/salaService';
+import { getSheet, listEpisodeMedications } from '../../lib/salaService';
 import { MAX_BEDS } from '../../lib/sala/constants';
 
 const BED_SIZE = 104;
@@ -22,6 +22,7 @@ export default function SalaPage() {
   const [editingBed, setEditingBed] = useState(null);
   const [adding, setAdding] = useState(false);
   const [sheets, setSheets] = useState({}); // bedId -> sheet | null | undefined(cargando)
+  const [medsByBed, setMedsByBed] = useState({}); // bedId -> meds[] | undefined(cargando)
   const hideTimer = useRef(null);
   const boundsRef = useRef(null);
 
@@ -34,12 +35,22 @@ export default function SalaPage() {
   // Carga la ficha de la cama activa para la tarjeta flotante (con caché).
   useEffect(() => {
     if (!activeBed) return;
-    if (!activeBed.episode_id) { setSheets((p) => ({ ...p, [activeBed.id]: null })); return; }
-    if (sheets[activeBed.id] !== undefined) return;
+    if (!activeBed.episode_id) {
+      setSheets((p) => ({ ...p, [activeBed.id]: null }));
+      setMedsByBed((p) => ({ ...p, [activeBed.id]: [] }));
+      return;
+    }
     let alive = true;
-    getSheet(activeBed.episode_id)
-      .then((s) => { if (alive) setSheets((p) => ({ ...p, [activeBed.id]: s })); })
-      .catch(() => {});
+    if (sheets[activeBed.id] === undefined) {
+      getSheet(activeBed.episode_id)
+        .then((s) => { if (alive) setSheets((p) => ({ ...p, [activeBed.id]: s })); })
+        .catch(() => {});
+    }
+    if (medsByBed[activeBed.id] === undefined) {
+      listEpisodeMedications(activeBed.episode_id)
+        .then((m) => { if (alive) setMedsByBed((p) => ({ ...p, [activeBed.id]: m })); })
+        .catch(() => {});
+    }
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
@@ -70,11 +81,16 @@ export default function SalaPage() {
     const fresh = beds.find((x) => x.id === b.id) ?? b; // toma el episode_id actualizado
     if (fresh.episode_id) {
       try {
-        const s = await getSheet(fresh.episode_id);
+        const [s, m] = await Promise.all([
+          getSheet(fresh.episode_id),
+          listEpisodeMedications(fresh.episode_id),
+        ]);
         setSheets((p) => ({ ...p, [b.id]: s }));
+        setMedsByBed((p) => ({ ...p, [b.id]: m }));
       } catch { /* noop */ }
     } else {
       setSheets((p) => ({ ...p, [b.id]: null }));
+      setMedsByBed((p) => ({ ...p, [b.id]: [] }));
     }
   };
 
@@ -137,6 +153,7 @@ export default function SalaPage() {
             <BedInfoCard
               bed={activeBed}
               sheet={sheets[activeBed.id]}
+              meds={medsByBed[activeBed.id]}
               canvasW={canvasW}
               onMouseEnter={() => showHover(activeBed.id)}
               onMouseLeave={scheduleHide}

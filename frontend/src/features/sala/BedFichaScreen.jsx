@@ -4,9 +4,11 @@ import {
   ensureEpisodeForBed, getSheet, upsertSheet,
   listPressureInjuries, savePressureInjury, deletePressureInjury,
   listBalances, addBalance, cumulativeBalance,
-  getAlteredLabs, getPendingTasks,
+  getAlteredLabs, getPendingTasks, listEpisodeMedications, addEpisodeMedication,
+  updateEpisodeMedicationRate, removeEpisodeMedication,
 } from '../../lib/salaService';
 import { GENERAL_STATUS } from '../../lib/sala/constants';
+import EpisodeMedications from './EpisodeMedications';
 import { containsRut, firstRutField } from '../../lib/sala/validation';
 import PressureInjuries from './PressureInjuries';
 
@@ -58,6 +60,9 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
   const [sheet, setSheet] = useState({});
   const [injuries, setInjuries] = useState([]);
   const [balances, setBalances] = useState([]);
+  const [epMeds, setEpMeds] = useState([]);
+  const [baseMeds, setBaseMeds] = useState([]);   // snapshot persistido (para diff)
+  const [saving, setSaving] = useState(false);
   const [newBalance, setNewBalance] = useState('');
   const [labs, setLabs] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -86,12 +91,13 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
         if (!bed.episode_id) { setLoading(false); return; }
         const epId = bed.episode_id;
         setEpisodeId(epId);
-        const [s, pi, fb, al, pt] = await Promise.all([
+        const [s, pi, fb, al, pt, em] = await Promise.all([
           getSheet(epId), listPressureInjuries(epId), listBalances(epId),
-          getAlteredLabs(epId), getPendingTasks(epId),
+          getAlteredLabs(epId), getPendingTasks(epId), listEpisodeMedications(epId),
         ]);
         setSheet(s ?? {});
         setInjuries(pi); setBalances(fb); setLabs(al); setTasks(pt);
+        setEpMeds(em); setBaseMeds(em);
       } finally { setLoading(false); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -141,6 +147,62 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
     setNewBalance('');
   };
 
+  // Medicamentos en BORRADOR: estas operaciones son locales; nada toca la
+  // base hasta apretar "Guardar cambios".
+  const onAddMed = (med) => {
+    setEpMeds((p) => [...p, {
+      _tmp: crypto.randomUUID(),
+      medication: { id: med.id, generic_name: med.generic_name, admin_rate_unit: med.admin_rate_unit ?? null },
+      infusion_rate_value: null,
+      infusion_rate_unit: med.admin_rate_unit ?? null,
+    }]);
+  };
+  const onUpdateMedRate = (localId, value, unit) => {
+    setEpMeds((p) => p.map((m) =>
+      ((m.id ?? m._tmp) === localId
+        ? { ...m, infusion_rate_value: value, infusion_rate_unit: unit }
+        : m)));
+  };
+  const onRemoveMed = (localId) => {
+    setEpMeds((p) => p.filter((m) => (m.id ?? m._tmp) !== localId));
+  };
+
+  // Confirma TODO (ficha + medicamentos) y cierra la ventana.
+  const saveAll = async () => {
+    if (saving) return;
+    if (firstRutField(sheet, SHEET_FIELDS)) { setSaveState('rut'); return; }
+    setSaving(true);
+    try {
+      const epId = await ensureEpisode();
+      // ficha (guardado final)
+      const payload = Object.fromEntries(SHEET_FIELDS.map((k) => [k, sheet[k] ?? null]));
+      await upsertSheet(epId, payload);
+      // medicamentos: diff borrador vs snapshot
+      const currentIds = new Set(epMeds.filter((m) => m.id).map((m) => m.id));
+      for (const b of baseMeds) {                       // quitados
+        if (!currentIds.has(b.id)) await removeEpisodeMedication(b.id);
+      }
+      for (const m of epMeds) {                          // nuevos
+        if (!m.id) await addEpisodeMedication(epId, m.medication.id, m.infusion_rate_value, m.infusion_rate_unit);
+      }
+      const baseById = new Map(baseMeds.map((b) => [b.id, b]));
+      for (const m of epMeds) {                          // velocidad cambiada
+        if (!m.id) continue;
+        const b = baseById.get(m.id);
+        if (b && (b.infusion_rate_value !== m.infusion_rate_value || b.infusion_rate_unit !== m.infusion_rate_unit)) {
+          await updateEpisodeMedicationRate(m.id, m.infusion_rate_value, m.infusion_rate_unit);
+        }
+      }
+      setSaveState('saved');
+      onClose();
+    } catch (e) {
+      console.error('Guardar cambios falló:', e);
+      setErrMsg(e?.message || String(e));
+      setSaveState('error');
+      setSaving(false);
+    }
+  };
+
   const SaveBadge = () => {
     const map = {
       saving: ['Guardando…', 'text-zinc-400'],
@@ -154,17 +216,24 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
   };
 
   if (loading) {
-    return <Overlay onClose={onClose}><p className="p-8 text-zinc-500">Cargando ficha…</p></Overlay>;
+    return <Overlay><p className="p-8 text-zinc-500">Cargando ficha…</p></Overlay>;
   }
 
   return (
-    <Overlay onClose={onClose}>
+    <Overlay>
       <header className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-700 px-6 py-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">{bed.label} · Ficha</h2>
           <div className="flex items-center gap-3">
             <SaveBadge />
-            <button onClick={onClose} className="px-4 py-2 text-sm rounded-lg border border-zinc-300 dark:border-zinc-600">Cerrar</button>
+            <button type="button" onClick={saveAll} disabled={saving}
+              className="px-4 py-2 text-sm rounded-lg bg-sky-600 text-white font-medium hover:bg-sky-700 disabled:opacity-50">
+              {saving ? 'Guardando…' : 'Guardar cambios'}
+            </button>
+            <button type="button" onClick={onClose} aria-label="Cerrar"
+              className="w-9 h-9 grid place-items-center rounded-lg border border-zinc-300 dark:border-zinc-600 text-zinc-500 hover:text-zinc-700">
+              ✕
+            </button>
           </div>
         </div>
         {(sheet.allergies || sheet.isolation) && (
@@ -220,6 +289,12 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
           <Textarea label="Cuidados de enfermería" value={sheet.nursing_care} onChange={(v) => set('nursing_care', v)} rows={3} />
           <Textarea label="Manejo médico" value={sheet.medical_management} onChange={(v) => set('medical_management', v)} rows={3} />
         </Section>
+
+<Section title="Medicamentos">
+  <EpisodeMedications items={epMeds} onAdd={onAddMed}
+    onUpdateRate={onUpdateMedRate} onRemove={onRemoveMed} />
+</Section>
+
 
         <Section title="Exámenes alterados">
           <ReadOnlyList items={labs}
@@ -299,12 +374,10 @@ function ReadOnlyList({ items, render, empty }) {
   );
 }
 
-function Overlay({ children, onClose }) {
+function Overlay({ children }) {
   return (
-    <div className="fixed inset-0 z-50 bg-black/40" onClick={onClose}>
-      <div
-        className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-zinc-900 overflow-y-auto shadow-xl"
-        onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 bg-black/40">
+      <div className="absolute inset-y-0 right-0 w-full max-w-2xl bg-white dark:bg-zinc-900 overflow-y-auto shadow-xl">
         {children}
       </div>
     </div>

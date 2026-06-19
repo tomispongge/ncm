@@ -19,11 +19,21 @@ const FIELDS = [
 
 const hasText = (v) => (v ?? '').toString().trim() !== '';
 
+const medLine = (m) => {
+  const name = m.medication?.generic_name ?? '—';
+  const rate = m.infusion_rate_value != null
+    ? ` — ${m.infusion_rate_value} ${m.infusion_rate_unit ?? ''}`.trimEnd()
+    : '';
+  return name + rate;
+};
+
 export default function BedInfoCard({
-  bed, sheet, canvasW, onEdit, onRemove, onClose, onMouseEnter, onMouseLeave,
+  bed, sheet, meds, canvasW, onEdit, onRemove, onClose, onMouseEnter, onMouseLeave,
 }) {
   const loadingData = sheet === undefined;
   const rows = sheet ? FIELDS.filter(([k]) => hasText(sheet[k])) : [];
+  const medList = meds ?? [];
+  const empty = !loadingData && rows.length === 0 && medList.length === 0;
 
   // Coloca a la derecha de la cama; si no cabe, a la izquierda.
   const placeLeft = (bed.pos_x ?? 0) + BED_SIZE + 12 + CARD_W > canvasW;
@@ -53,18 +63,32 @@ export default function BedInfoCard({
         </div>
 
         {loadingData && <p className="text-xs text-zinc-400">Cargando…</p>}
-        {!loadingData && rows.length === 0 && (
-          <p className="text-xs text-zinc-400">Sin datos cargados.</p>
-        )}
-        {rows.length > 0 && (
-          <dl className="space-y-1.5 max-h-64 overflow-auto pr-1">
-            {rows.map(([k, label]) => (
-              <div key={k} className="text-xs">
-                <dt className={`font-medium ${labelColor(k)}`}>{label}</dt>
-                <dd className="text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{sheet[k]}</dd>
+        {empty && <p className="text-xs text-zinc-400">Sin datos cargados.</p>}
+
+        {(rows.length > 0 || medList.length > 0) && (
+          <div className="space-y-2 max-h-64 overflow-auto pr-1">
+            {rows.length > 0 && (
+              <dl className="space-y-1.5">
+                {rows.map(([k, label]) => (
+                  <div key={k} className="text-xs">
+                    <dt className={`font-medium ${labelColor(k)}`}>{label}</dt>
+                    <dd className="text-zinc-800 dark:text-zinc-200 whitespace-pre-wrap break-words">{sheet[k]}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {medList.length > 0 && (
+              <div className="text-xs">
+                <p className="font-medium text-zinc-500 dark:text-zinc-400">Medicamentos</p>
+                <ul className="text-zinc-800 dark:text-zinc-200 space-y-0.5 mt-0.5">
+                  {medList.map((m) => (
+                    <li key={m.id ?? m._tmp} className="break-words">{medLine(m)}</li>
+                  ))}
+                </ul>
               </div>
-            ))}
-          </dl>
+            )}
+          </div>
         )}
 
         <div className="flex gap-2 pt-1">
