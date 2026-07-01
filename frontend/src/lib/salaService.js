@@ -1,7 +1,6 @@
 // NCM · Módulo Sala — capa de datos (Supabase)
 // Ajusta la ruta del cliente a la de tu repo (p. ej. ../supabaseClient).
 import { supabase } from './supabase';
-import { MAX_BEDS } from './sala/constants';
 
 async function actorId() {
   const { data } = await supabase.auth.getUser();
@@ -30,18 +29,29 @@ export async function listBeds(wardId) {
   return data;
 }
 
-export async function addBed(wardId, beds) {
-  if (beds.length >= MAX_BEDS) throw new Error(`Máximo ${MAX_BEDS} camas por sala.`);
-  const next = beds.reduce((m, b) => Math.max(m, b.bed_number ?? 0), 0) + 1;
-  // staggered spawn para que no se apilen exactamente encima
-  const offset = (beds.length % 5) * 16;
-  const { data, error } = await supabase.from('beds').insert({
-    ward_id: wardId, label: `Cama ${next}`, bed_number: next,
-    status: 'libre', pos_x: 24 + offset, pos_y: 24 + offset,
-    created_by: await actorId(),
+export async function addBed(wardId, number, status, spawnIndex = 0) {
+  const n = Number(number);
+  if (!Number.isInteger(n) || n < 1 || n > 20) {
+    throw new Error('El número de cama debe ser un entero entre 1 y 20.');
+  }
+  const uid = await actorId();
+  const col = spawnIndex % 5, row = Math.floor(spawnIndex / 5);
+  const { data: bed, error } = await supabase.from('beds').insert({
+    ward_id: wardId, label: `Cama ${n}`, bed_number: n,
+    status: 'libre',
+    pos_x: 24 + col * 120, pos_y: 24 + row * 130,
+    created_by: uid,
   }).select('id, ward_id, label, bed_number, status, pos_x, pos_y, episode_id').single();
-  if (error) throw error;
-  return data;
+  if (error) {
+    if (error.code === '23505') throw new Error(`La cama ${n} ya existe en esta sala.`);
+    throw error;
+  }
+  // "Ocupada": crea paciente+episodio y deja la cama ocupada (reusa el helper).
+  if (status === 'ocupada') {
+    const episodeId = await ensureEpisodeForBed(bed);
+    return { ...bed, episode_id: episodeId, status: 'ocupada' };
+  }
+  return bed;
 }
 
 export async function updateBedPosition(bedId, x, y) {
