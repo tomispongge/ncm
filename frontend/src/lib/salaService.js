@@ -169,16 +169,66 @@ export function cumulativeBalance(balances) {
 // ---- Lecturas cruzadas (read-only) ---------------------------------
 // Exámenes alterados y Pendientes vienen de sus módulos. Aún no construidos:
 // consultas defensivas que devuelven [] si la tabla/columna no existe.
+// "Exámenes destacados": los analitos que el usuario destacó en el módulo
+// Laboratorio (tabla lab_highlights), cada uno con su ÚLTIMO valor. Los que
+// están fuera de rango traen is_abnormal=true (la UI los pinta en rojo).
+// Se mantiene el nombre getAlteredLabs para no romper el import de la ficha.
+// Consulta defensiva: devuelve [] si algo falla.
 export async function getAlteredLabs(episodeId) {
   try {
-    const { data, error } = await supabase
+    // 1) analitos destacados de esta cama/episodio
+    const { data: highlights, error: hErr } = await supabase
+      .from('lab_highlights')
+      .select('analyte_key')
+      .eq('episode_id', episodeId);
+    if (hErr) throw hErr;
+
+    const keys = (highlights || []).map((h) => h.analyte_key);
+    if (!keys.length) return [];
+
+    // 2) resultados de esos analitos en los informes de este episodio
+    const { data: rows, error: rErr } = await supabase
       .from('lab_results')
-      .select('id, analyte, value, unit, flag, lab_panels!inner(episode_id)')
+      .select(
+        'analyte, analyte_key, value_text, value_num, unit, ref_low, ref_high, ref_text, is_abnormal, ' +
+        'lab_panels!inner(episode_id, taken_at)'
+      )
       .eq('lab_panels.episode_id', episodeId)
-      .not('flag', 'is', null);
-    if (error) throw error;
-    return data ?? [];
-  } catch { return []; }
+      .in('analyte_key', keys);
+    if (rErr) throw rErr;
+
+    // 3) por cada analito destacado, quedarse con el valor del informe más reciente
+    const latest = new Map();
+    for (const r of rows || []) {
+      const takenAt = r.lab_panels?.taken_at ?? null;
+      const ts = takenAt ? Date.parse(takenAt) : -Infinity;
+      const prev = latest.get(r.analyte_key);
+      if (!prev || ts > prev._ts) {
+        latest.set(r.analyte_key, {
+          analyteKey: r.analyte_key,
+          analyte: r.analyte,
+          value: r.value_text,      // alias compatibilidad con la UI previa
+          value_text: r.value_text,
+          value_num: r.value_num,
+          unit: r.unit,
+          ref_low: r.ref_low,
+          ref_high: r.ref_high,
+          ref_text: r.ref_text,
+          is_abnormal: r.is_abnormal,
+          flag: r.is_abnormal ? 'alterado' : null, // alias compatibilidad
+          taken_at: takenAt,
+          _ts: ts,
+        });
+      }
+    }
+
+    const collator = new Intl.Collator('es', { sensitivity: 'base' });
+    return Array.from(latest.values())
+      .map(({ _ts, ...rest }) => rest)
+      .sort((a, b) => collator.compare(a.analyte || '', b.analyte || ''));
+  } catch {
+    return [];
+  }
 }
 
 export async function getPendingTasks(episodeId) {
