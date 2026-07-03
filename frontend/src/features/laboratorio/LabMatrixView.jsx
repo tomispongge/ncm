@@ -41,6 +41,7 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
     columns,
     rows,
     addPanel,
+    removePanel,
     selecting,
     startSelecting,
     toggleAnalyte,
@@ -50,6 +51,17 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
 
   // formulario de ingreso manual (base de la futura verificación del OCR)
   const [adding, setAdding] = useState(false);
+
+  // borrar una columna (informe) completa, con confirmación
+  const handleDeleteColumn = async (col) => {
+    const when = formatDateTime(col.taken_at);
+    if (!window.confirm(`¿Eliminar el informe del ${when}? Se borran sus resultados.`)) return;
+    try {
+      await removePanel(col.id);
+    } catch {
+      /* el hook ya deja el error en pantalla */
+    }
+  };
 
   // fila donde termina el bloque de destacados (para dibujar un separador)
   const pinnedCount = useMemo(() => rows.filter((r) => r.pinned).length, [rows]);
@@ -168,10 +180,28 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
                       scope="col"
                       className="sticky top-0 z-10 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap border-b border-zinc-200 dark:border-zinc-800"
                     >
-                      <div>{formatDateTime(col.taken_at)}</div>
-                      {col.lab_source ? (
-                        <div className="text-[11px] font-normal text-zinc-400">{col.lab_source}</div>
-                      ) : null}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div>{formatDateTime(col.taken_at)}</div>
+                          {col.lab_source ? (
+                            <div className="text-[11px] font-normal text-zinc-400">{col.lab_source}</div>
+                          ) : null}
+                        </div>
+                        {!selecting ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteColumn(col)}
+                            disabled={saving}
+                            aria-label="Eliminar informe"
+                            title="Eliminar informe"
+                            className="shrink-0 rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 disabled:opacity-40"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
                     </th>
                   ))}
                 </tr>
