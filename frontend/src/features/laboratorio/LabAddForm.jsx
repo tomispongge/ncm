@@ -11,7 +11,7 @@
 import { useState } from 'react';
 import { parseValueNum, toNumOrNull, computeAbnormal } from '../../lib/laboratorio/constants';
 import { containsRut } from '../../lib/sala/validation';
-import { runOcr, deidentify, parseLabText } from '../../lib/laboratorio/ocr';
+import { readDocument, deidentify, parseLabText } from '../../lib/laboratorio/ocr';
 
 const field =
   'w-full rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm';
@@ -52,10 +52,10 @@ export function LabAddForm({ saving = false, onCancel, onSubmit }) {
     setScanning(true);
     setOcrText('');
     try {
-      const raw = await runOcr(file);
+      const raw = await readDocument(file);
       setOcrText(deidentify(raw));
     } catch {
-      setScanErr('No se pudo leer la imagen. Prueba con una foto más nítida.');
+      setScanErr('No se pudo leer el archivo. Prueba con un PDF o una foto más nítida.');
       setOcrText(null);
     } finally {
       setScanning(false);
@@ -169,17 +169,17 @@ export function LabAddForm({ saving = false, onCancel, onSubmit }) {
           <div className="rounded-lg border border-dashed border-zinc-300 dark:border-zinc-700 p-3">
             <div className="flex flex-wrap items-center gap-2">
               <label className={`${btnSecondary} cursor-pointer`}>
-                {scanning ? 'Leyendo imagen…' : 'Escanear informe (foto/archivo)'}
+                {scanning ? 'Leyendo archivo…' : 'Escanear informe (foto o PDF)'}
                 <input
                   type="file"
-                  accept="image/*"
+                  accept="image/*,application/pdf"
                   className="hidden"
                   onChange={onPickFile}
                   disabled={scanning || analyzing}
                 />
               </label>
               <span className="text-xs text-zinc-400">
-                La imagen se procesa en tu dispositivo y no se guarda.
+                El archivo se procesa en tu dispositivo y no se guarda.
               </span>
             </div>
 
