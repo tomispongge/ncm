@@ -241,6 +241,23 @@ export async function getPendingTasks(episodeId) {
   } catch { return []; }
 }
 
+// Datos extra de la tarjeta flotante de la cama: exámenes destacados,
+// pendientes y balance hídrico (12h más reciente + acumulado). Defensivo:
+// nunca lanza (la tarjeta no debe romperse si falta una tabla).
+export async function getBedExtras(episodeId) {
+  const [labs, pending, balances] = await Promise.all([
+    getAlteredLabs(episodeId),          // ya es defensiva
+    getPendingTasks(episodeId),         // ya es defensiva
+    listBalances(episodeId).catch(() => []),
+  ]);
+  return {
+    labs,
+    pending,
+    balance12h: balances[0]?.balance_12h ?? null,   // el más reciente
+    balanceCumulative: balances.length ? cumulativeBalance(balances) : null,
+  };
+}
+
 // Vacía la sala: soft-delete de todas las camas activas y libera sus números.
 export async function emptyWard(wardId) {
   const { data: active, error: qErr } = await supabase
