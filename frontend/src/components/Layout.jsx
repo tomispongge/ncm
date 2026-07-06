@@ -15,9 +15,9 @@ export default function Layout({ children, user }) {
   const location = useLocation()
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Navbar superior */}
-      <header className="bg-indigo-700 text-white shadow-md">
+    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+      {/* Navbar superior (fija arriba) */}
+      <header className="bg-indigo-700 text-white shadow-md shrink-0 z-30">
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <span className="text-xl font-bold tracking-wide">NCM</span>
           <div className="flex items-center gap-3">
@@ -32,9 +32,9 @@ export default function Layout({ children, user }) {
         </div>
       </header>
 
-      <div className="flex flex-1">
-        {/* Sidebar (solo desktop) */}
-        <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-200 py-4">
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar (solo desktop) — fija, con scroll propio si hiciera falta */}
+        <aside className="hidden md:flex flex-col w-56 bg-white border-r border-gray-200 py-4 shrink-0 overflow-y-auto">
           {modules.map((m) => (
             <Link
               key={m.path}
@@ -51,9 +51,11 @@ export default function Layout({ children, user }) {
           ))}
         </aside>
 
-        {/* Contenido principal */}
-        <main className="flex-1 p-4 md:p-6 max-w-6xl w-full mx-auto">
-          {children}
+        {/* Contenido principal — ÚNICA zona con scroll */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-6">
+          <div className="max-w-6xl w-full mx-auto">
+            {children}
+          </div>
         </main>
       </div>
 
