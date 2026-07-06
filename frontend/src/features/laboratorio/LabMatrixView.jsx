@@ -3,8 +3,9 @@
 // modo "destacar" y botones de agregar/actualizar/exportar.
 // Estilo NCM: Tailwind v3, dark mode, zinc + sky-600. Cierra solo con la X.
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useLaboratorio } from './useLaboratorio';
+import { LabAddForm } from './LabAddForm';
 
 // dd/mm/aaaa hh:mm en formato chileno
 function formatDateTime(iso) {
@@ -31,7 +32,7 @@ function refRange(cell) {
   return '';
 }
 
-export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport }) {
+export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
   const {
     loading,
     saving,
@@ -39,12 +40,28 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport })
     hasData,
     columns,
     rows,
+    addPanel,
+    removePanel,
     selecting,
     startSelecting,
     toggleAnalyte,
     cancelSelecting,
     commitHighlights,
   } = useLaboratorio(episodeId);
+
+  // formulario de ingreso manual (base de la futura verificación del OCR)
+  const [adding, setAdding] = useState(false);
+
+  // borrar una columna (informe) completa, con confirmación
+  const handleDeleteColumn = async (col) => {
+    const when = formatDateTime(col.taken_at);
+    if (!window.confirm(`¿Eliminar el informe del ${when}? Se borran sus resultados.`)) return;
+    try {
+      await removePanel(col.id);
+    } catch {
+      /* el hook ya deja el error en pantalla */
+    }
+  };
 
   // fila donde termina el bloque de destacados (para dibujar un separador)
   const pinnedCount = useMemo(() => rows.filter((r) => r.pinned).length, [rows]);
@@ -55,6 +72,7 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport })
     'rounded-lg border border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50';
 
   return (
+    <>
     <div className="fixed inset-0 z-50 bg-black/40 grid place-items-center p-4">
       <div className="w-full max-w-5xl max-h-[90vh] overflow-hidden rounded-2xl bg-white dark:bg-zinc-900 shadow-xl flex flex-col">
         {/* Header */}
@@ -96,8 +114,8 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport })
               <button
                 type="button"
                 className={btnPrimary}
-                onClick={onAdd}
-                disabled={!onAdd || saving}
+                onClick={() => setAdding(true)}
+                disabled={saving}
               >
                 Agregar resultados
               </button>
@@ -162,10 +180,28 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport })
                       scope="col"
                       className="sticky top-0 z-10 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap border-b border-zinc-200 dark:border-zinc-800"
                     >
-                      <div>{formatDateTime(col.taken_at)}</div>
-                      {col.lab_source ? (
-                        <div className="text-[11px] font-normal text-zinc-400">{col.lab_source}</div>
-                      ) : null}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div>{formatDateTime(col.taken_at)}</div>
+                          {col.lab_source ? (
+                            <div className="text-[11px] font-normal text-zinc-400">{col.lab_source}</div>
+                          ) : null}
+                        </div>
+                        {!selecting ? (
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteColumn(col)}
+                            disabled={saving}
+                            aria-label="Eliminar informe"
+                            title="Eliminar informe"
+                            className="shrink-0 rounded p-1 text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/40 disabled:opacity-40"
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                              <path d="M18 6 6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
                     </th>
                   ))}
                 </tr>
@@ -234,5 +270,17 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onAdd, onExport })
         </div>
       </div>
     </div>
+
+    {adding && (
+      <LabAddForm
+        saving={saving}
+        onCancel={() => setAdding(false)}
+        onSubmit={async (payload) => {
+          await addPanel(payload);
+          setAdding(false);
+        }}
+      />
+    )}
+    </>
   );
 }

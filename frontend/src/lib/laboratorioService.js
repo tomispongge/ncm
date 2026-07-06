@@ -109,7 +109,14 @@ export async function savePanel(episodeId, { takenAt, labSource = null, results 
     }
   }
 
-  await purgeOldPanels(episodeId);
+  // La purga es una optimización de retención: si falla, el informe YA quedó
+  // guardado. No hacemos fallar el guardado por esto (evita el patrón
+  // "parece que falló -> reintento -> columna duplicada").
+  try {
+    await purgeOldPanels(episodeId);
+  } catch (e) {
+    console.warn('purgeOldPanels falló (el informe se guardó igual):', e?.message || e);
+  }
   return panel;
 }
 
