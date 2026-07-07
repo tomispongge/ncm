@@ -16,8 +16,9 @@ export default function Layout({ children, user }) {
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
-      {/* Navbar superior (fija arriba) */}
-      <header className="bg-indigo-700 text-white shadow-md shrink-0 z-30">
+      {/* Navbar superior (fija arriba). 'relative' hace efectivo el z-index
+          para que ningún contenido posicionado se pinte por encima. */}
+      <header className="bg-indigo-700 text-white shadow-md shrink-0 relative z-40">
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <span className="text-xl font-bold tracking-wide">NCM</span>
           <div className="flex items-center gap-3">

@@ -32,7 +32,7 @@ function Field({ label, value, labelClass = 'text-zinc-500 dark:text-zinc-400' }
 }
 
 export default function BedInfoCard({
-  bed, sheet, meds, extras, canvasW, onEdit, onRemove, onClose, onMouseEnter, onMouseLeave,
+  bed, sheet, meds, extras, canvasW, onEdit, onRemove, onView, onClose, onMouseEnter, onMouseLeave,
 }) {
   const occupied = !!bed.episode_id;
   const loading = occupied && (sheet === undefined || extras === undefined);
@@ -132,15 +132,23 @@ export default function BedInfoCard({
           </div>
         )}
 
-        <div className="flex gap-2 pt-1">
-          <button type="button" onClick={onEdit}
-            className="flex-1 rounded-lg bg-sky-600 text-white py-1.5 text-xs font-medium hover:bg-sky-700">
-            Editar
-          </button>
-          <button type="button" onClick={onRemove}
-            className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 py-1.5 text-xs hover:border-red-400">
-            Eliminar
-          </button>
+        <div className="space-y-2 pt-1">
+          {onView && (
+            <button type="button" onClick={onView}
+              className="w-full rounded-lg border border-zinc-300 dark:border-zinc-600 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200 hover:border-sky-400">
+              Ver otros datos
+            </button>
+          )}
+          <div className="flex gap-2">
+            <button type="button" onClick={onEdit}
+              className="flex-1 rounded-lg bg-sky-600 text-white py-1.5 text-xs font-medium hover:bg-sky-700">
+              Editar
+            </button>
+            <button type="button" onClick={onRemove}
+              className="flex-1 rounded-lg border border-zinc-300 dark:border-zinc-600 py-1.5 text-xs hover:border-red-400">
+              Eliminar
+            </button>
+          </div>
         </div>
       </div>
     </div>

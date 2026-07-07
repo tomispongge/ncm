@@ -4,6 +4,7 @@ import { useSala } from './useSala';
 import BedCard from './BedCard';
 import BedInfoCard from './BedInfoCard';
 import BedFichaScreen from './BedFichaScreen';
+import BedDetailsView from './BedDetailsView';
 import AddBedDialog from './AddBedDialog';
 import { getSheet, listEpisodeMedications, getBedExtras } from '../../lib/salaService';
 import { MAX_BEDS } from '../../lib/sala/constants';
@@ -20,6 +21,7 @@ export default function SalaPage() {
   const [hoverId, setHoverId] = useState(null);
   const [pinnedId, setPinnedId] = useState(null);
   const [editingBed, setEditingBed] = useState(null);
+  const [viewingBed, setViewingBed] = useState(null); // vista de solo lectura
   const [adding, setAdding] = useState(false);
   const [sheets, setSheets] = useState({}); // bedId -> sheet | null | undefined(cargando)
   const [medsByBed, setMedsByBed] = useState({}); // bedId -> meds[] | undefined(cargando)
@@ -170,6 +172,7 @@ export default function SalaPage() {
               onMouseLeave={scheduleHide}
               onEdit={() => openEditor(activeBed.id)}
               onRemove={() => deleteBed(activeBed.id)}
+              onView={() => setViewingBed(activeBed)}
               onClose={() => { setPinnedId(null); setHoverId(null); }}
             />
           )}
@@ -190,6 +193,10 @@ export default function SalaPage() {
           onClose={closeEditor}
           onOccupied={(bedId, episodeId) => patchBed(bedId, { episode_id: episodeId, status: 'ocupada' })}
         />
+      )}
+
+      {viewingBed && (
+        <BedDetailsView bed={viewingBed} onClose={() => setViewingBed(null)} />
       )}
     </div>
   );
