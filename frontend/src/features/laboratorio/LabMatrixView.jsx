@@ -144,8 +144,9 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
           Herramienta de apoyo. La validación final corresponde al profesional sanitario responsable.
         </div>
 
-        {/* Cuerpo */}
-        <div className="flex-1 overflow-auto px-5 py-4">
+        {/* Cuerpo. Sin padding-top: con scroll + sticky top-0, el padding
+            superior deja pasar filas por encima del encabezado fijo. */}
+        <div className="flex-1 overflow-auto px-5 pb-4">
           {loading ? (
             <p className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Cargando exámenes…</p>
           ) : error ? (
