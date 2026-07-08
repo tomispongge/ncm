@@ -144,8 +144,9 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
           Herramienta de apoyo. La validación final corresponde al profesional sanitario responsable.
         </div>
 
-        {/* Cuerpo */}
-        <div className="flex-1 overflow-auto px-5 py-4">
+        {/* Cuerpo. Sin padding-top: con scroll + sticky top-0, el padding
+            superior deja pasar filas por encima del encabezado fijo. */}
+        <div className="flex-1 overflow-auto px-5 pb-4">
           {loading ? (
             <p className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">Cargando exámenes…</p>
           ) : error ? (
@@ -162,15 +163,15 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
               </p>
             </div>
           ) : (
-            <table className="w-full border-collapse text-sm">
+            <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr>
                   {selecting ? (
-                    <th scope="col" className="sticky left-0 top-0 z-20 bg-white dark:bg-zinc-900 px-2 py-2" />
+                    <th scope="col" className="sticky left-0 top-0 z-30 bg-white dark:bg-zinc-900 px-2 py-2" />
                   ) : null}
                   <th
                     scope="col"
-                    className="sticky left-0 top-0 z-20 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800"
+                    className="sticky left-0 top-0 z-30 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 border-b border-zinc-200 dark:border-zinc-800"
                   >
                     Analito
                   </th>
@@ -178,7 +179,7 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
                     <th
                       key={col.id}
                       scope="col"
-                      className="sticky top-0 z-10 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap border-b border-zinc-200 dark:border-zinc-800"
+                      className="sticky top-0 z-20 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-medium text-zinc-500 dark:text-zinc-400 whitespace-nowrap border-b border-zinc-200 dark:border-zinc-800"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -210,11 +211,12 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
                 {rows.map((row, i) => {
                   const showDivider =
                     !selecting && pinnedCount > 0 && i === pinnedCount && pinnedCount < rows.length;
+                  // Con border-separate el borde va en las celdas, no en el <tr>.
+                  const dividerCls = showDivider
+                    ? ' border-t-2 border-t-zinc-300 dark:border-t-zinc-700'
+                    : '';
                   return (
-                    <tr
-                      key={row.analyteKey}
-                      className={showDivider ? 'border-t-2 border-zinc-200 dark:border-zinc-700' : ''}
-                    >
+                    <tr key={row.analyteKey}>
                       {selecting ? (
                         <td className="sticky left-0 z-10 bg-white dark:bg-zinc-900 px-2 py-2 align-top">
                           <input
@@ -228,7 +230,7 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
                       ) : null}
                       <th
                         scope="row"
-                        className="sticky left-0 z-10 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-normal text-zinc-800 dark:text-zinc-100 whitespace-nowrap border-b border-zinc-100 dark:border-zinc-800"
+                        className={`sticky left-0 z-10 bg-white dark:bg-zinc-900 px-3 py-2 text-left font-normal text-zinc-800 dark:text-zinc-100 whitespace-nowrap border-b border-zinc-100 dark:border-zinc-800${dividerCls}`}
                       >
                         {!selecting && row.pinned ? (
                           <span className="mr-1 text-sky-600" aria-hidden="true">★</span>
@@ -245,7 +247,8 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
                               'px-3 py-2 whitespace-nowrap border-b border-zinc-100 dark:border-zinc-800 ' +
                               (cell && cell.is_abnormal
                                 ? 'text-red-600 dark:text-red-400 font-medium'
-                                : 'text-zinc-700 dark:text-zinc-300')
+                                : 'text-zinc-700 dark:text-zinc-300') +
+                              dividerCls
                             }
                           >
                             {cell ? (

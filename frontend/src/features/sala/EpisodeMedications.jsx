@@ -11,17 +11,20 @@ const abbreviate = (s, n = 22) =>
 
 const inRange = (v) => v >= RATE_MIN && v <= RATE_MAX;
 
+// Decimal chileno: acepta coma o punto. "0,6" -> 0.6
+const parseRate = (s) => Number(String(s).replace(',', '.'));
+
 // ---- Fila de un fármaco asignado -----------------------------------
 function AssignedMed({ item, onUpdateRate, onRemove }) {
   const localId = item.id ?? item._tmp;
   const name = item.medication?.generic_name ?? '—';
   const [val, setVal] = useState(item.infusion_rate_value ?? '');
   const [unit, setUnit] = useState(item.infusion_rate_unit ?? item.medication?.admin_rate_unit ?? '');
-  const bad = val !== '' && !inRange(Number(val));
+  const bad = val !== '' && !inRange(parseRate(val));
 
   const commit = (nextVal = val, nextUnit = unit) => {
-    const v = nextVal === '' ? null : Number(nextVal);
-    if (v != null && !inRange(v)) return;           // no aceptar fuera de rango
+    const v = nextVal === '' ? null : parseRate(nextVal);
+    if (v != null && (!Number.isFinite(v) || !inRange(v))) return; // no aceptar fuera de rango
     onUpdateRate(localId, v, nextUnit || null);
   };
 
@@ -32,7 +35,7 @@ function AssignedMed({ item, onUpdateRate, onRemove }) {
       </span>
       <input
         type="text" inputMode="decimal" value={val} placeholder="vel."
-        onChange={(e) => setVal(e.target.value.replace(/[^\d.]/g, ''))}
+        onChange={(e) => setVal(e.target.value.replace(/[^\d.,]/g, ''))}
         onBlur={() => commit()}
         className={`w-16 ${ctrl} ${bad ? 'border-red-500 ring-1 ring-red-400' : ''}`} />
       <select value={unit}

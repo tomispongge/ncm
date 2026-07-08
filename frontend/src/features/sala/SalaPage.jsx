@@ -4,8 +4,9 @@ import { useSala } from './useSala';
 import BedCard from './BedCard';
 import BedInfoCard from './BedInfoCard';
 import BedFichaScreen from './BedFichaScreen';
+import BedDetailsView from './BedDetailsView';
 import AddBedDialog from './AddBedDialog';
-import { getSheet, listEpisodeMedications } from '../../lib/salaService';
+import { getSheet, listEpisodeMedications, getBedExtras } from '../../lib/salaService';
 import { MAX_BEDS } from '../../lib/sala/constants';
 
 const BED_SIZE = 104;
@@ -20,9 +21,11 @@ export default function SalaPage() {
   const [hoverId, setHoverId] = useState(null);
   const [pinnedId, setPinnedId] = useState(null);
   const [editingBed, setEditingBed] = useState(null);
+  const [viewingBed, setViewingBed] = useState(null); // vista de solo lectura
   const [adding, setAdding] = useState(false);
   const [sheets, setSheets] = useState({}); // bedId -> sheet | null | undefined(cargando)
   const [medsByBed, setMedsByBed] = useState({}); // bedId -> meds[] | undefined(cargando)
+  const [extrasByBed, setExtrasByBed] = useState({}); // bedId -> {labs,pending,balance12h,balanceCumulative} | null | undefined
   const hideTimer = useRef(null);
   const boundsRef = useRef(null);
 
@@ -38,6 +41,7 @@ export default function SalaPage() {
     if (!activeBed.episode_id) {
       setSheets((p) => ({ ...p, [activeBed.id]: null }));
       setMedsByBed((p) => ({ ...p, [activeBed.id]: [] }));
+      setExtrasByBed((p) => ({ ...p, [activeBed.id]: null }));
       return;
     }
     let alive = true;
@@ -49,6 +53,11 @@ export default function SalaPage() {
     if (medsByBed[activeBed.id] === undefined) {
       listEpisodeMedications(activeBed.episode_id)
         .then((m) => { if (alive) setMedsByBed((p) => ({ ...p, [activeBed.id]: m })); })
+        .catch(() => {});
+    }
+    if (extrasByBed[activeBed.id] === undefined) {
+      getBedExtras(activeBed.episode_id)
+        .then((x) => { if (alive) setExtrasByBed((p) => ({ ...p, [activeBed.id]: x })); })
         .catch(() => {});
     }
     return () => { alive = false; };
@@ -81,16 +90,19 @@ export default function SalaPage() {
     const fresh = beds.find((x) => x.id === b.id) ?? b; // toma el episode_id actualizado
     if (fresh.episode_id) {
       try {
-        const [s, m] = await Promise.all([
+        const [s, m, x] = await Promise.all([
           getSheet(fresh.episode_id),
           listEpisodeMedications(fresh.episode_id),
+          getBedExtras(fresh.episode_id),
         ]);
         setSheets((p) => ({ ...p, [b.id]: s }));
         setMedsByBed((p) => ({ ...p, [b.id]: m }));
+        setExtrasByBed((p) => ({ ...p, [b.id]: x }));
       } catch { /* noop */ }
     } else {
       setSheets((p) => ({ ...p, [b.id]: null }));
       setMedsByBed((p) => ({ ...p, [b.id]: [] }));
+      setExtrasByBed((p) => ({ ...p, [b.id]: null }));
     }
   };
 
@@ -154,11 +166,13 @@ export default function SalaPage() {
               bed={activeBed}
               sheet={sheets[activeBed.id]}
               meds={medsByBed[activeBed.id]}
+              extras={extrasByBed[activeBed.id]}
               canvasW={canvasW}
               onMouseEnter={() => showHover(activeBed.id)}
               onMouseLeave={scheduleHide}
               onEdit={() => openEditor(activeBed.id)}
               onRemove={() => deleteBed(activeBed.id)}
+              onView={() => setViewingBed(activeBed)}
               onClose={() => { setPinnedId(null); setHoverId(null); }}
             />
           )}
@@ -179,6 +193,10 @@ export default function SalaPage() {
           onClose={closeEditor}
           onOccupied={(bedId, episodeId) => patchBed(bedId, { episode_id: episodeId, status: 'ocupada' })}
         />
+      )}
+
+      {viewingBed && (
+        <BedDetailsView bed={viewingBed} onClose={() => setViewingBed(null)} />
       )}
     </div>
   );
