@@ -6,6 +6,7 @@
 import { useMemo, useState } from 'react';
 import { useLaboratorio } from './useLaboratorio';
 import { LabAddForm } from './LabAddForm';
+import { exportMatrixToExcel } from '../../lib/laboratorio/exportExcel';
 
 // dd/mm/aaaa hh:mm en formato chileno
 function formatDateTime(iso) {
@@ -32,7 +33,7 @@ function refRange(cell) {
   return '';
 }
 
-export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
+export function LabMatrixView({ episodeId, bedLabel, onClose }) {
   const {
     loading,
     saving,
@@ -130,10 +131,10 @@ export function LabMatrixView({ episodeId, bedLabel, onClose, onExport }) {
               <button
                 type="button"
                 className={btnSecondary}
-                onClick={onExport}
-                disabled={!onExport || !hasData || saving}
+                onClick={() => exportMatrixToExcel({ columns, rows, bedLabel })}
+                disabled={!hasData || saving}
               >
-                Exportar
+                Exportar a Excel
               </button>
             </>
           )}
