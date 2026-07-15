@@ -7,6 +7,12 @@
 --
 -- Pegar en el SQL editor de Supabase (proyecto de PRODUCCIÓN) y ejecutar.
 -- Re-ejecutable.
+--
+-- OJO (gotcha): si ya existía una tabla `tasks` de un scaffold viejo (con
+-- columnas title/status/due_at), `create table if not exists` NO agrega las
+-- columnas nuevas. Si la tabla vieja está vacía, córrela así primero:
+--   drop table if exists public.tasks cascade;
+-- y luego este create.
 -- ============================================================
 
 create table if not exists public.tasks (
