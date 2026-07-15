@@ -231,11 +231,15 @@ export async function getAlteredLabs(episodeId) {
   }
 }
 
+// Pendientes NO completados del episodio (módulo Pendientes). Estructurados:
+// kind/subtype/detail/processed → la UI arma el resumen con summarizeTask().
+// Defensiva: devuelve [] si la tabla no existe todavía.
 export async function getPendingTasks(episodeId) {
   try {
     const { data, error } = await supabase
-      .from('tasks').select('id, title, status, due_at')
-      .eq('episode_id', episodeId).neq('status', 'completado');
+      .from('tasks').select('id, kind, subtype, detail, processed')
+      .eq('episode_id', episodeId).eq('deleted', false).eq('done', false)
+      .order('created_at', { ascending: true });
     if (error) throw error;
     return data ?? [];
   } catch { return []; }
