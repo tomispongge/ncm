@@ -10,6 +10,7 @@ import {
 import { GENERAL_STATUS } from '../../lib/sala/constants';
 import EpisodeMedications from './EpisodeMedications';
 import { containsRut, firstRutField } from '../../lib/sala/validation';
+import { summarizeTask } from '../../lib/pendientes/constants';
 import PressureInjuries from './PressureInjuries';
 
 const field =
@@ -304,8 +305,8 @@ export default function BedFichaScreen({ bed, onClose, onOccupied }) {
 
         <Section title="Pendientes">
           <ReadOnlyList items={tasks}
-            empty="Sin pendientes (se reflejan al construir el módulo Pendientes)."
-            render={(t) => `${t.title} — ${t.status}`} />
+            empty="Sin pendientes. Se registran en el módulo Pendientes."
+            render={(t) => summarizeTask(t)} />
         </Section>
 
         <Section title="Lesiones por presión">

@@ -6,6 +6,7 @@ import {
   getSheet, listPressureInjuries, listBalances, cumulativeBalance,
   getAlteredLabs, getPendingTasks, listEpisodeMedications,
 } from '../../lib/salaService';
+import { summarizeTask } from '../../lib/pendientes/constants';
 
 const hasText = (v) => (v ?? '').toString().trim() !== '';
 
@@ -151,7 +152,7 @@ export default function BedDetailsView({ bed, onClose }) {
               <Group title="Pendientes">
                 {tasks.length ? (
                   <ul className="text-sm space-y-0.5 text-zinc-800 dark:text-zinc-100">
-                    {tasks.map((t) => <li key={t.id} className="break-words">{t.title}</li>)}
+                    {tasks.map((t) => <li key={t.id} className="break-words">{summarizeTask(t)}</li>)}
                   </ul>
                 ) : <p className="text-sm text-zinc-400">Sin pendientes.</p>}
               </Group>

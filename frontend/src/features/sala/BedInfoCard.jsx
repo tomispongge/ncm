@@ -1,4 +1,6 @@
 // NCM · Módulo Sala — tarjeta flotante de datos del paciente
+import { summarizeTask } from '../../lib/pendientes/constants';
+
 const BED_SIZE = 104;
 const CARD_W = 252;
 
@@ -103,7 +105,7 @@ export default function BedInfoCard({
               <p className="font-medium text-zinc-500 dark:text-zinc-400">Pendientes</p>
               {pending.length > 0 ? (
                 <ul className="mt-0.5 space-y-0.5 text-zinc-800 dark:text-zinc-200">
-                  {pending.map((t) => <li key={t.id} className="break-words">{t.title}</li>)}
+                  {pending.map((t) => <li key={t.id} className="break-words">{summarizeTask(t)}</li>)}
                 </ul>
               ) : (
                 <p className="text-zinc-400">Sin pendientes</p>
